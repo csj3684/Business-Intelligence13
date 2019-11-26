@@ -14,7 +14,7 @@ def isNaN(a):
     return a != a
 
 
-# In[34]:
+# In[18]:
 
 
 delta_h_limit = 3
@@ -191,7 +191,7 @@ def get_distance(user_info, user1_idx, user2_idx, delta_h_tolerance, delta_w_tol
     
     return distance, distance
 
-def get_user_profile(user_id, distance_matrix, starT_idx, rating_info, clothing_info, size_category):
+def get_user_profile(user_id, distance_matrix, starT_idx, rating_info, clothing_info, size_category, penalty):
     user_id = int(user_id)
     profiles = pd.DataFrame(index = ['0'], columns = size_category)
     for s_category in size_category:
@@ -250,10 +250,10 @@ def get_user_profile(user_id, distance_matrix, starT_idx, rating_info, clothing_
             for j in profiles.iloc[0][s_category].columns:
                 if profiles.iloc[0][s_category].loc[i, j] == 1:
                     profiles.iloc[0][s_category].loc[i, 'numerator'] += 1
-                    profiles.iloc[0][s_category].loc[i, 'denominator'] += 1.5
+                    profiles.iloc[0][s_category].loc[i, 'denominator'] += (1 + penalty)
                     profiles.iloc[0][s_category].loc[i, 'num'] += 1
                 elif profiles.iloc[0][s_category].loc[i, j] == -1:
-                    profiles.iloc[0][s_category].loc[i, 'denominator'] += 1.5
+                    profiles.iloc[0][s_category].loc[i, 'denominator'] += (1 + penalty)
                     profiles.iloc[0][s_category].loc[i, 'num'] += 1
                     
             numerator = profiles.iloc[0][s_category].loc[i, 'numerator']
@@ -430,7 +430,6 @@ def recommend_by_user_profile(user_id, clothing_list, user_profile_info, clothin
     for clothing in clothing_list:
         aa.loc[clothing]['compatibility'] = get_compatibility_by_profile(user_id, clothing, user_profile_info, clothing_info, size_category)
         
-        
     for clothing in clothing_list:
         mean_compatibility = 0
         mean_n = 0
@@ -478,14 +477,14 @@ def recommend_by_user_profile(user_id, clothing_list, user_profile_info, clothin
             aa.loc[clothing, 'score'] = mean_compatibility - (MSD_minus * (MSD_minus / (MSD_minus + MSD_plus)))
     
     score = 0
-    recommend = None
+    best_fit = None
     for clothing in aa.index:
         if aa.loc[clothing, 'score'] != "알 수 없음":
             if aa.loc[clothing, 'score'] > score:
-                recommend = clothing
+                best_fit = clothing
                 score = aa.loc[clothing, 'score']
     
-    return recommend, aa
+    return best_fit, aa
         
 def get_error_and_evaluation(user_id, user_size, rating_info, clothing_info, size_category): 
     Err_Evaluation = pd.DataFrame(columns = ['error', 'rating'])
@@ -507,7 +506,7 @@ def get_error_and_evaluation(user_id, user_size, rating_info, clothing_info, siz
     
 
 
-# In[5]:
+# In[3]:
 
 
 data = pd.read_csv('/home/csj3684/Business-Intelligence13/user_table.csv', engine='python')
@@ -539,7 +538,7 @@ for user_idx in range(user_info.index.size):
         idx.append(user_idx)
 
 
-# In[6]:
+# In[4]:
 
 
 user_id = "100265001"
@@ -547,19 +546,19 @@ delta_h_tolerance = 2
 delta_w_tolerance = 2
 
 
-# In[7]:
+# In[5]:
 
 
 height_idx = get_height_idx(user_info, int(user_id), idx, delta_h_tolerance, delta_w_tolerance)
 
 
-# In[8]:
+# In[6]:
 
 
 print(height_idx)
 
 
-# In[9]:
+# In[7]:
 
 
 START = time.time()
@@ -567,13 +566,13 @@ distance_matrix, start_idx = get_personal_D(user_info, int(user_id), height_idx,
 print("걸린시간 : ", round(time.time() - START, 2), "초")
 
 
-# In[10]:
+# In[8]:
 
 
 print(start_idx)                         
 
 
-# In[11]:
+# In[9]:
 
 
 """#b = 0
@@ -587,13 +586,16 @@ for i in distance_matrix.index:
 #print("b",b)"""
 
 
-# In[14]:
+# In[31]:
 
 
-user_profile_info.loc[user_id] = get_user_profile(user_id, distance_matrix, start_idx, rating_info, clothing_info, size_category)
+start = time.time()
+penalty = 0.3
+user_profile_info.loc[user_id] = get_user_profile(user_id, distance_matrix, start_idx, rating_info, clothing_info, size_category, penalty)
+print(time.time() - start)
 
 
-# In[44]:
+# In[32]:
 
 
 user_profile_info.loc[user_id]['기장'].loc[:, 'numerator' : 'num']
@@ -602,7 +604,7 @@ user_profile_info.loc[user_id]['기장'].loc[:, 'numerator' : 'num']
 #user_profile_info.loc[user_id]['소매'].loc[:, 'numerator' : 'num']
 
 
-# In[19]:
+# In[33]:
 
 
 size_tolerance = 0.5
@@ -611,13 +613,14 @@ num_tolerance = 5
 adjusted_user_profile_info.loc[user_id] = get_adjusted_user_profile(user_profile_info.loc[user_id], size_tolerance, num_tolerance)
 
 
-# In[43]:
+# In[34]:
 
 
+print(adjusted_user_profile_info.loc[user_id]['기장'].loc[:,'sum'].plot.bar())
 adjusted_user_profile_info.loc[user_id]['기장']
 #adjusted_user_profile_info.loc[user_id]['어깨']
 #adjusted_user_profile_info.loc[user_id]['가슴']
-#adjusted_user_profile_info.loc[user_id]['소매']
+#adjusted_user_profile_info.loc[user_id]['소매'].loc[:,'sum']
 
 
 # In[35]:
