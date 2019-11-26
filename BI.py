@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
 
 import numpy as np
 import copy
@@ -12,13 +7,6 @@ import math
 
 def isNaN(a):
     return a != a
-
-
-# In[106]:
-
-
-delta_h_limit = 3
-delta_w_limit = 3
 
 def find_nearest_height_idx(user_info, user_idx, height, start, last, idx, delta_h_tolerance):
     mid = int(((start + last) / 2))
@@ -48,7 +36,6 @@ def find_nearest_weight_idx(user_info, user_idx, weight, start, last, delta_h_to
     else:
         return None
 
-    
 def get_D(user_info, idx, delta_h_tolerance = delta_h_limit, detla_w_tolerance = delta_w_limit):
     START = time.time()
     distance_matrix = pd.DataFrame(index = user_info.index, columns = user_info.index)
@@ -519,12 +506,9 @@ def get_error_and_evaluation(user_id, user_size, rating_info, clothing_info, siz
         
     return Err_Evaluation
 
+#ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ#
 
-    
-
-
-# In[3]:
-
+#  여기부분은 csv 경로만바꾸고 그대로 써주세요
 
 data = pd.read_csv('/home/csj3684/Business-Intelligence13/user_table.csv', engine='python')
 user_info = pd.DataFrame(index = list(data.iloc[:, 0]), columns = list(data.columns[1:len(data.columns)]))
@@ -554,212 +538,44 @@ for user_idx in range(user_info.index.size):
         height = user_info.iloc[user_idx].loc['신장']
         idx.append(user_idx)
 
+#ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ#
 
-# In[88]:
+user_id = '유저 ID'
 
-
-user_id = "100265001"
-delta_h_tolerance = 2
-delta_w_tolerance = 2
-
-
-# In[89]:
-
+delta_h_tolerance = 2   # 파라미터
+delta_w_tolerance = 2   # 파라미터
 
 height_idx = get_height_idx(user_info, int(user_id), idx, delta_h_tolerance, delta_w_tolerance)
 
-
-# In[90]:
-
-
 distance_matrix, start_idx = get_personal_D(user_info, int(user_id), height_idx, delta_h_tolerance, delta_w_tolerance)
 
+penalty = 0.3           # 파라미터
 
-# In[91]:
-
-
-penalty = 0.3
 user_profile_info.loc[user_id] = get_user_profile(user_id, distance_matrix, start_idx, rating_info, clothing_info, size_category, penalty)
 
-
-# In[92]:
-
-
-#user_profile_info.loc[user_id]['기장'].loc[:, 'numerator' : 'num']
-#user_profile_info.loc[user_id]['어깨'].loc[:, 'numerator' : 'num']
-#user_profile_info.loc[user_id]['가슴'].loc[:, 'numerator' : 'num']
-#user_profile_info.loc[user_id]['소매'].loc[:, 'numerator' : 'num']
-
-
-# In[93]:
-
-
-size_tolerance = 0.5
-num_tolerance = 5
+size_tolerance = 0.5    # 파라미터
+num_tolerance = 5       # 파라미터
 
 adjusted_user_profile_info.loc[user_id] = get_adjusted_user_profile(user_profile_info.loc[user_id], size_tolerance, num_tolerance)
 
+evaluation = evaluate_by_user_profile(user_id, ['의류 ID', '의류 ID', '의류 ID'], adjusted_user_profile_info, clothing_info, size_category)  # 파라미터 : 2번째 list 의류 id들
 
-# In[94]:
-
-
-#print(adjusted_user_profile_info.loc[user_id]['기장'].loc[:,'sum'].plot.bar())
-#adjusted_user_profile_info.loc[user_id]['기장']
-#adjusted_user_profile_info.loc[user_id]['어깨']
-#adjusted_user_profile_info.loc[user_id]['가슴']
-#adjusted_user_profile_info.loc[user_id]['소매'].loc[:,'sum']
-
-
-# In[95]:
-
-
-evaluation = evaluate_by_user_profile(user_id, ['100024', '100044', '100066'], adjusted_user_profile_info, clothing_info, size_category)
-
-
-# In[96]:
-
-
-evaluation.loc['100024','score']
-
-
-# In[97]:
-
+evaluation.loc['의류 ID','score']    # 파라미터 : 첫번째 인자 의류  id
 
 best_fit = get_best_fit(evaluation)
 
-
-# In[98]:
-
-
 best_fit
-
-
-# In[99]:
-
 
 user_size_info.loc[int(user_id)], log = get_estimate_size(int(user_id), distance_matrix, start_idx, rating_info, clothing_info, size_category)
 
+get_error(user_size_info, "유저 ID", '의류 ID', clothing_info, size_category)  # 파라미터 :2번째 유저 id,  3번째 의류 id
 
-# In[108]:
+recommend = recommed_by_distance(user_size_info, user_id, ['의류 ID', '의류 ID', '의류 ID'], clothing_info, size_category)
 
-
-get_error(user_size_info, user_id, '100044', clothing_info, size_category)
-
-
-# In[87]:
-
-
-#log.sort_values(by = 'distance')
-
-
-# In[86]:
-
-
-#user_info.loc[int(user_id)]
-
-
-# In[85]:
-
-
-#for user in log.loc[:,'user_id']:
-#    print(user_info.loc[user])
-
-
-# In[104]:
-
-
-recommend = recommed_by_distance(user_size_info, user_id, ['100024', '100044', '100066'], clothing_info, size_category)
-recommend
-
-
-# In[105]:
-
-
-recommend = recommend_by_cosine(user_size_info, user_id, ['100024', '100044', '100066'], clothing_info, size_category)
-recommend
-
-
-# In[160]:
-
+recommend = recommend_by_cosine(user_size_info, user_id, ['의류 ID', '의류 ID', '의류 ID'], clothing_info, size_category)
 
 error_value = get_error_and_evaluation(int(user_id), user_size_info.loc[int(user_id)], rating_info, clothing_info, size_category)
-error_value
 
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-"""h_limit = 0
-w_limit = 0
-while True:
-    h_limit += 1
-    print(h_limit, w_limit)
-
-    distance_matrix, start_idx = get_personal_D(user_info, int(user_id), height_idx, h_limit, w_limit)
-    
-    num = 0
-    for user in distance_matrix.columns:
-        if isNaN(distance_matrix.loc[int(user_id)][user]) == False:
-             num += 1
-    print("사용 될 수 있는 user 수 : ",num, "명")
-    
-    user_size_info.loc[int(user_id)], log = get_estimate_size(int(user_id), distance_matrix, start_idx, rating_info, clothing_info, size_category)
-    print("추정에 사용된 rating 수 : ", log.index.size, "개")
-    
-    if log.index.size >= 100:
-        break
-        
-    w_limit += 1
-    print(h_limit, w_limit)
-    
-    distance_matrix, start_idx = get_personal_D(user_info, int(user_id), height_idx, h_limit, w_limit)
-
-    num = 0
-    for user in distance_matrix.columns:
-        if isNaN(distance_matrix.loc[int(user_id)][user]) == False:
-             num += 1
-    print("사용 될 수 있는 user 수 : ",num, "명")
-    
-    user_size_info.loc[int(user_id)], log = get_estimate_size(int(user_id), distance_matrix, start_idx, rating_info, clothing_info, size_category)
-    print("추정에 사용된 rating 수 : ", log.index.size, "개")
-    
-    if log.index.size >= 100:
-        break
-        
-"""
-
-
-# In[ ]:
 
 
 
