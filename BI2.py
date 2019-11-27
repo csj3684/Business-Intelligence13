@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[159]:
+
+
 import numpy as np
 import copy
 import pandas as pd
@@ -6,6 +12,10 @@ import math
 
 def isNaN(a):
     return a != a
+
+
+# In[262]:
+
 
 def find_nearest_height_idx(user_info, user_idx, height, start, last, idx, delta_h_tolerance):
     mid = int(((start + last) / 2))
@@ -35,7 +45,8 @@ def find_nearest_weight_idx(user_info, user_idx, weight, start, last, delta_h_to
     else:
         return None
 
-def get_D(user_info, idx, delta_h_tolerance = delta_h_limit, detla_w_tolerance = delta_w_limit):
+    
+def get_D(user_info, idx, delta_h_tolerance, detla_w_tolerance):
     START = time.time()
     distance_matrix = pd.DataFrame(index = user_info.index, columns = user_info.index)
   
@@ -86,11 +97,11 @@ def get_D(user_info, idx, delta_h_tolerance = delta_h_limit, detla_w_tolerance =
     print("total", time.time()-START)
     return distance_matrix
 
-def get_height_idx(user_info, user_id, idx, delta_h_tolerance = delta_h_limit, detla_w_tolerance = delta_w_limit):
+def get_height_idx(user_info, user_id, idx, delta_h_tolerance, detla_w_tolerance):
     user_idx = list(user_info.index).index(user_id)
     
     mid = find_nearest_height_idx(user_info, user_idx, user_info.loc[user_id]['신장'], 0, len(idx) - 1, idx, delta_h_tolerance)
-    
+
     if mid == None:
         return None
   
@@ -107,23 +118,25 @@ def get_height_idx(user_info, user_id, idx, delta_h_tolerance = delta_h_limit, d
             right_side += 1
         else:
             break
-
-    idx = idx[left_side + 1 : right_side]
-    
+            
+    if right_side == len(idx):
+        idx = idx[left_side + 1 :] + [user_info.index.size]
+    else:
+        idx = idx[left_side + 1 : right_side + 1]
+        
     return copy.deepcopy(idx)
 
-def get_personal_D(user_info, user_id, height_idx, delta_h_tolerance = delta_h_limit, detla_w_tolerance = delta_w_limit):
+def get_personal_D(user_info, user_id, height_idx_start, height_idx_end, delta_h_tolerance, detla_w_tolerance):
     distance_matrix = pd.DataFrame(index = [user_id], columns = user_info.index)
     
     user_idx = list(user_info.index).index(user_id)
     start_idx = []
+    end_idx = []
     
-    for i in range(len(height_idx)):
-        start = height_idx[i]
-        if i == (len(height_idx) - 1):
-            last = user_info.index.size - 1
-        else:
-            last = height_idx[i+1] - 1
+    for i in range(len(height_idx_start)):
+        
+        start = height_idx_start[i]
+        last = height_idx_end[i] - 1
  
         mid = find_nearest_weight_idx(user_info, user_idx, user_info.iloc[user_idx].loc['체중'], start, last, delta_h_tolerance, detla_w_tolerance) 
 
@@ -152,9 +165,66 @@ def get_personal_D(user_info, user_id, height_idx, delta_h_tolerance = delta_h_l
                     right_side += 1
                 else:
                     break
+                    
+            end_idx.append(right_side - 1)
+            
+    return distance_matrix, start_idx, end_idx
+
+def get_personal_D_modified(user_info, user_id, height_idx_start, height_idx_end, delta_h_tolerance, detla_w_tolerance, required_num):
+    distance_matrix = pd.DataFrame(index = [user_id], columns = user_info.index)
     
-    return distance_matrix, start_idx
-         
+    user_idx = list(user_info.index).index(user_id)
+    start_idx = []
+    end_idx = []
+    
+    collected_data_num = 0
+    
+    for i in range(len(height_idx_start)):
+        
+        #if collected_data_num >= required_num:
+        #    break
+            
+        start = height_idx_start[i]
+        last = height_idx_end[i] - 1
+ 
+        mid = find_nearest_weight_idx(user_info, user_idx, user_info.iloc[user_idx].loc['체중'], start, last, delta_h_tolerance, detla_w_tolerance) 
+
+        if mid == None:
+            continue
+        else:
+            left_side = mid
+
+            while (start <= left_side) and (collected_data_num < required_num):#
+
+                D = get_distance(user_info, user_idx, left_side, delta_h_tolerance, detla_w_tolerance) 
+                if D != None:
+                    distance_matrix.loc[user_id].iloc[left_side], rmsidsjgdmsrj = D
+                    left_side -= 1
+                    collected_data_num += 1#
+                else:
+                    break
+                    
+            start_idx.append(left_side + 1)
+            
+            # collected_data_num += (mid - start_idx[-1] + 1)
+            
+            right_side = mid
+
+            while (right_side <= last) and (collected_data_num < required_num):#
+                D = get_distance(user_info, user_idx, right_side, delta_h_tolerance, detla_w_tolerance) 
+                if D != None:
+                    distance_matrix.loc[user_id].iloc[right_side], rmsidsjgdmsrj = D
+                    right_side += 1
+                    collected_data_num += 1#
+                else:
+                    break
+                    
+            end_idx.append(right_side - 1)
+            
+            # collected_data_num += (end_idx[-1] - mid)
+            
+    return distance_matrix, start_idx, end_idx, collected_data_num
+
 def get_distance(user_info, user1_idx, user2_idx, delta_h_tolerance, delta_w_tolerance):
     user1_height = user_info.iloc[user1_idx].loc['신장']
     user1_weight = user_info.iloc[user1_idx].loc['체중']
@@ -177,51 +247,49 @@ def get_distance(user_info, user1_idx, user2_idx, delta_h_tolerance, delta_w_tol
     
     return distance, distance
 
-def get_user_profile(user_id, distance_matrix, starT_idx, rating_info, clothing_info, size_category, penalty):
+def get_user_profile(user_id, distance_matrix, starT_idx, enD_idx, rating_info, clothing_info, size_category, penalty):
     user_id = int(user_id)
     profiles = pd.DataFrame(index = ['0'], columns = size_category)
     for s_category in size_category:
             profiles.iloc[0][s_category] = pd.DataFrame(index = ['tmp_index'], columns = ['tmp_col'])
-        
-    for start_idx in starT_idx:
-        user_idx = start_idx
-      
-        while True:
-            distance = distance_matrix.loc[int(user_id)].iloc[user_idx]
-            if isNaN(distance) == True:
-                break
-            for clothing in rating_info.columns: # clothing : object
-                if isNaN(rating_info.iloc[user_idx].loc[clothing]) == True:
-                    continue
-                for s_category in size_category:
-                    profile = profiles.iloc[0][s_category]
-                    shopper = str(rating_info.index[user_idx])
-       
-                    size = str(clothing_info.loc[int(clothing)][s_category])
-                  
-                    if (shopper in list(profile.columns)) == False:
-                        profile.loc[:, shopper] = None
-                    
-                    if (rating_info.iloc[user_idx].loc[clothing] == 1) or (rating_info.iloc[user_idx].loc[clothing] == 3):
-                        if (size in list(profile.index)) == False:
-                            profile.loc[size] = None
-                            profile.loc[size, shopper] = -1
-                        elif profile.loc[size, shopper] == None: 
-                            profile.loc[size, shopper] = -1
-                        else:
-                            profile.loc[size, shopper] -= 1
-                            
-                    elif rating_info.iloc[user_idx].loc[clothing] == 2:
-                        if (size in list(profile.index)) == False:
-                            profile.loc[size] = None
-                            profile.loc[size, shopper] = 1
-                        elif profile.loc[size, shopper] == None: 
-                            profile.loc[size, shopper] = 1
-                        else:
-                            profile.loc[size, shopper] += 1
-
-            user_idx += 1  
+    
+    #start1 = time.time()
+    
+    for start_idx, end_idx in zip(starT_idx, enD_idx):
+        for user_idx in range(start_idx, end_idx + 1):
             
+            clothing = str(int(rating_info.index[user_idx] / 1000))
+                
+            for s_category in size_category:
+                profile = profiles.iloc[0][s_category]
+                shopper = str(rating_info.index[user_idx])
+
+                size = str(clothing_info.loc[int(clothing)][s_category])
+
+                if (shopper in list(profile.columns)) == False:
+                    profile.loc[:, shopper] = None
+
+                if (rating_info.iloc[user_idx].loc[clothing] == 1) or (rating_info.iloc[user_idx].loc[clothing] == 3):
+                    if (size in list(profile.index)) == False:
+                        profile.loc[size] = None
+                        profile.loc[size, shopper] = -1
+                    elif profile.loc[size, shopper] == None: 
+                        profile.loc[size, shopper] = -1
+                    else:
+                        profile.loc[size, shopper] -= 1
+
+                elif rating_info.iloc[user_idx].loc[clothing] == 2:
+                    if (size in list(profile.index)) == False:
+                        profile.loc[size] = None
+                        profile.loc[size, shopper] = 1
+                    elif profile.loc[size, shopper] == None: 
+                        profile.loc[size, shopper] = 1
+                    else:
+                        profile.loc[size, shopper] += 1
+                
+    #print(time.time()-start1)
+  
+    #start2 = time.time()
     for s_category in size_category:
         profiles.iloc[0][s_category].drop('tmp_index', inplace = True)
         profiles.iloc[0][s_category].drop('tmp_col', axis = 1, inplace = True)
@@ -249,6 +317,8 @@ def get_user_profile(user_id, distance_matrix, starT_idx, rating_info, clothing_
                 profiles.iloc[0][s_category].loc[i, 'sum'] = numerator / denominator
             else:
                 profiles.iloc[0][s_category].loc[i, 'sum'] = 'NAN'
+    
+    #print(time.time()-start2)
     
     return profiles.iloc[0]
 
@@ -321,28 +391,24 @@ def get_adjusted_user_profile(user_profile, size_tolerance, num_tolerance):
             
     return adjusted_user_profile.iloc[0]
         
-def get_estimate_size(user_id, distance_matrix, starT_idx, rating_info, clothing_info, size_category):
+def get_estimate_size(user_id, distance_matrix, starT_idx, enD_idx, rating_info, clothing_info, size_category):
     similar_user_rating_info = pd.DataFrame(columns = ['user_id', 'distance', 'influence'] + list(clothing_info.columns[0:4]))
     total_influence = 0
 
     #rating_num = 0
     
-    for start_idx in starT_idx:
-        user_idx = start_idx
-        while True:
-            distance = distance_matrix.loc[int(user_id)].iloc[user_idx]
-            if isNaN(distance) == True:
-                break
-            for clothing in rating_info.columns:
-                #if isNaN(rating_info.iloc[user_idx].loc[clothing]) == False:
-                #    rating_num += 1
-                if rating_info.iloc[user_idx].loc[clothing] == 2: # 적당함 이면
-                    size = list(clothing_info.loc[int(clothing)][size_category[0] : size_category[-1]])
-                    similar_user_rating_info.loc[similar_user_rating_info.index.size] = [rating_info.index[user_idx], distance, None] + size
-                    if distance == 0:
-                        distance = 0.9
-                    total_influence += (1 / distance)
-            user_idx += 1
+    for start_idx, end_idx in zip(starT_idx, enD_idx):
+        for user_idx in range(start_idx, end_idx + 1):
+            clothing = str(int(rating_info.index[user_idx] / 1000))
+            distance = distance_matrix.loc[user_id][rating_info.index[user_idx]]
+            #if isNaN(rating_info.iloc[user_idx].loc[clothing]) == False:
+            #    rating_num += 1
+            if rating_info.iloc[user_idx].loc[clothing] == 2: # 적당함 이면
+                size = list(clothing_info.loc[int(clothing)][size_category[0] : size_category[-1]])
+                similar_user_rating_info.loc[similar_user_rating_info.index.size] = [rating_info.index[user_idx], distance, None] + size
+                if distance == 0:
+                    distance = 0.9
+                total_influence += (1 / distance)
                 
     for i in similar_user_rating_info.index:
         distance = similar_user_rating_info.loc[i]['distance']
@@ -360,6 +426,9 @@ def get_estimate_size(user_id, distance_matrix, starT_idx, rating_info, clothing
         estimate.append(estimate_value)
         
     #print("총 순회한 rating 수 : ", rating_num,"개")
+    similar_user_rating_info.sort_values(by = 'influence', ascending = False, inplace = True)
+    similar_user_rating_info.reset_index(drop=True, inplace = True)
+    
     return estimate, similar_user_rating_info
 
 def recommed_by_distance(user_size_info, user_id, clothing_list, clothing_info, size_category): # clothing_list = [String, ... ] : ID
@@ -506,7 +575,32 @@ def get_error_and_evaluation(user_id, user_size, rating_info, clothing_info, siz
     return Err_Evaluation
 
 
-data = pd.read_csv('/home/csj3684/Business-Intelligence13/user_table.csv', engine='python')
+# In[179]:
+
+
+def get_height_idx_adjusted(user_info, user_id, height_idx):
+    h_idx_info = pd.DataFrame(index = height_idx, columns = ['start', 'end', 'value'])
+    
+    for i in range(len(height_idx) - 1):
+        height = height_idx[i]
+        h_idx_info.loc[height]['start'] = height
+        h_idx_info.loc[height]['end'] = height_idx[i + 1]
+        h_idx_info.loc[height]['value'] = abs(user_info.iloc[height]['신장'] - user_info.loc[user_id]['신장'])
+        
+    h_idx_info.drop(height_idx[-1], inplace = True)
+        
+    h_idx_info.sort_values(by = 'value', inplace = True)
+    
+    start = list(h_idx_info['start'])
+    end = list(h_idx_info['end'])
+    
+    return start, end
+
+
+# In[114]:
+
+
+data = pd.read_csv('/home/csj3684/Business-Intelligence13/user_table_adjusted.csv', engine='python')
 user_info = pd.DataFrame(index = list(data.iloc[:, 0]), columns = list(data.columns[1:len(data.columns)]))
 for col in user_info.columns:
     user_info.loc[:, col] = list(data.loc[:, col])
@@ -517,7 +611,7 @@ clothing_info = pd.DataFrame(index = list(data.iloc[:, 0]), columns = list(data.
 for col in clothing_info.columns:
     clothing_info.loc[:, col] = list(data.loc[:, col])
 
-data = pd.read_csv('/home/csj3684/Business-Intelligence13/user_product_table.csv', engine='python')
+data = pd.read_csv('/home/csj3684/Business-Intelligence13/user_product_table_adjusted.csv', engine='python')
 rating_info = pd.DataFrame(index = list(data.iloc[:, 0]), columns = list(data.columns[1:len(data.columns)]))
 for col in rating_info.columns:
     rating_info.loc[:, col] = list(data.loc[:, col])
@@ -535,43 +629,251 @@ for user_idx in range(user_info.index.size):
         idx.append(user_idx)
 
 
-#ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ#
+# In[269]:
+
 
 if 0 in user_info.index:
     user_info.drop(0, inplace = True)
-
-user_height = 173   #
-user_weight = 68    #
+    
+user_height = 172
+user_weight = 68
 
 user_id = 0
 
 user_info.loc[user_id] = [user_height, user_weight]
 
-delta_h_tolerance = 2   #
-delta_w_tolerance = 2   #
+
+# In[235]:
+
+
+delta_h_tolerance = 0
+delta_w_tolerance = 0
+required_user_num = 100
+
+start = time.time()
+
+while True:
+    delta_h_tolerance += 1
+
+    height_idx = get_height_idx(user_info, int(user_id), idx, delta_h_tolerance, delta_w_tolerance)
+    height_idx_start, height_idx_end = get_height_idx_adjusted(user_info, user_id, height_idx)
+
+    distance_matrix, start_idx, end_idx = get_personal_D(user_info, int(user_id), height_idx_start, height_idx_end, delta_h_tolerance, delta_w_tolerance)
+    
+    num = 0
+    for user in distance_matrix.columns:
+        if isNaN(distance_matrix.loc[int(user_id)][user]) == False:
+            num += 1
+        
+    if num >= required_user_num:
+        break
+        
+    delta_w_tolerance += 1
+    
+    height_idx = get_height_idx(user_info, int(user_id), idx, delta_h_tolerance, delta_w_tolerance)
+    height_idx_start, height_idx_end = get_height_idx_adjusted(user_info, user_id, height_idx)
+
+    distance_matrix, start_idx, end_idx = get_personal_D(user_info, int(user_id),  height_idx_start, height_idx_end, delta_h_tolerance, delta_w_tolerance)
+
+    num = 0
+    for user in distance_matrix.columns:
+        if isNaN(distance_matrix.loc[int(user_id)][user]) == False:
+            num += 1
+         
+    if num >= required_user_num:
+        break
+        
+print(num)
+print(time.time() - start)
+
+
+# In[273]:
+
+
+delta_h_tolerance = 8
+delta_w_tolerance = 7
+
+
+# In[274]:
+
 
 height_idx = get_height_idx(user_info, int(user_id), idx, delta_h_tolerance, delta_w_tolerance)
+#height_idx
 
-distance_matrix, start_idx = get_personal_D(user_info, int(user_id), height_idx, delta_h_tolerance, delta_w_tolerance)
 
-penalty = 0.3   #
+# In[275]:
 
-user_profile_info.loc[user_id] = get_user_profile(user_id, distance_matrix, start_idx, rating_info, clothing_info, size_category, penalty)
 
-size_tolerance = 0.5    #
-num_tolerance = 5       #
+height_idx_start, height_idx_end = get_height_idx_adjusted(user_info, user_id, height_idx)
+#height_idx_start, height_idx_end
 
+
+# In[278]:
+
+
+start = time.time()
+
+required_num = 200
+penalty = 0.3
+size_tolerance = 0.5
+num_tolerance = 5
+
+distance_matrix, start_idx, end_idx, n = get_personal_D_modified(user_info, int(user_id), height_idx_start, height_idx_end, delta_h_tolerance, delta_w_tolerance, required_num)
+user_profile_info.loc[user_id] = get_user_profile(user_id, distance_matrix, start_idx, end_idx, rating_info, clothing_info, size_category, penalty)
 adjusted_user_profile_info.loc[user_id] = get_adjusted_user_profile(user_profile_info.loc[user_id], size_tolerance, num_tolerance)
+user_size_info.loc[int(user_id)], log = get_estimate_size(int(user_id), distance_matrix, start_idx, end_idx, rating_info, clothing_info, size_category)
 
-evaluation = evaluate_by_user_profile(user_id, ['100024', '100044', '100066'], adjusted_user_profile_info, clothing_info, size_category)    # 두번째 리스트 : 의류 ID
+print(n)
 
-evaluation.loc['100024','score']    # 첫번째 인자 : 의류 ID
+print(time.time() - start)
+
+
+# In[236]:
+
+
+start_idx, end_idx
+
+
+# In[220]:
+
+
+adjusted_user_profile_info.loc[user_id]['기장'].loc[:, 'numerator' : 'num']
+#adjusted_user_profile_info.loc[user_id]['어깨'].loc[:, 'numerator' : 'num']
+#adjusted_user_profile_info.loc[user_id]['가슴'].loc[:, 'numerator' : 'num']
+#adjusted_user_profile_info.loc[user_id]['소매'].loc[:, 'numerator' : 'num']
+
+
+# In[221]:
+
+
+#evaluation = evaluate_by_user_profile(user_id, ['100024', '100044', '100066', '100315', '100384', '200055'], adjusted_user_profile_info, clothing_info, size_category)
+
+
+# In[222]:
+
+
+evaluation = evaluate_by_user_profile(user_id, list(clothing_info.index), adjusted_user_profile_info, clothing_info, size_category)
+
+
+# In[223]:
+
+
+evaluation.loc[100016, 'compatibility']
+evaluation
+
+
+# In[224]:
+
+
+evaluation.loc[100016, 'score']
+
+
+# In[225]:
+
 
 best_fit = get_best_fit(evaluation)
 
-user_size_info.loc[int(user_id)], log = get_estimate_size(int(user_id), distance_matrix, start_idx, rating_info, clothing_info, size_category)
 
-get_error(user_size_info, user_id, '100044', clothing_info, size_category)  # 세번째 인자 : 의류 ID
+# In[226]:
+
+
+best_fit
+
+
+# In[263]:
+
+
+
+
+
+# In[264]:
+
+
+log
+
+
+# In[252]:
+
+
+error = get_error(user_size_info, user_id, '100194', clothing_info, size_category)
+
+
+# In[253]:
+
+
+error
+
+
+# In[230]:
+
+
+user_size_info.loc[int(user_id)].loc['기장']
+
+
+# In[192]:
+
+
+#log.sort_values(by = 'distance')
+
+
+# In[193]:
+
+
+#user_info.loc[int(user_id)]
+
+
+# In[194]:
+
+
+#for user in log.loc[:,'user_id']:
+#    print(user_info.loc[user])
+
+
+# In[195]:
+
+
+#recommend = recommed_by_distance(user_size_info, user_id, ['100024', '100044', '100066'], clothing_info, size_category)
+
+
+# In[196]:
+
+
+#recommend = recommend_by_cosine(user_size_info, user_id, ['100024', '100044', '100066'], clothing_info, size_category)
+
+
+# In[160]:
+
+
+#error_value = get_error_and_evaluation(int(user_id), user_size_info.loc[int(user_id)], rating_info, clothing_info, size_category)
+#error_value
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
 
 
 
