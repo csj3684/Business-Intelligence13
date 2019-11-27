@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[159]:
-
-
 import numpy as np
 import copy
 import pandas as pd
@@ -12,10 +6,6 @@ import math
 
 def isNaN(a):
     return a != a
-
-
-# In[262]:
-
 
 def find_nearest_height_idx(user_info, user_idx, height, start, last, idx, delta_h_tolerance):
     mid = int(((start + last) / 2))
@@ -574,10 +564,6 @@ def get_error_and_evaluation(user_id, user_size, rating_info, clothing_info, siz
         
     return Err_Evaluation
 
-
-# In[179]:
-
-
 def get_height_idx_adjusted(user_info, user_id, height_idx):
     h_idx_info = pd.DataFrame(index = height_idx, columns = ['start', 'end', 'value'])
     
@@ -595,10 +581,6 @@ def get_height_idx_adjusted(user_info, user_id, height_idx):
     end = list(h_idx_info['end'])
     
     return start, end
-
-
-# In[114]:
-
 
 data = pd.read_csv('/home/csj3684/Business-Intelligence13/user_table_adjusted.csv', engine='python')
 user_info = pd.DataFrame(index = list(data.iloc[:, 0]), columns = list(data.columns[1:len(data.columns)]))
@@ -629,9 +611,6 @@ for user_idx in range(user_info.index.size):
         idx.append(user_idx)
 
 
-# In[269]:
-
-
 if 0 in user_info.index:
     user_info.drop(0, inplace = True)
     
@@ -642,10 +621,7 @@ user_id = 0
 
 user_info.loc[user_id] = [user_height, user_weight]
 
-
-# In[235]:
-
-
+"""
 delta_h_tolerance = 0
 delta_w_tolerance = 0
 required_user_num = 100
@@ -685,31 +661,15 @@ while True:
         
 print(num)
 print(time.time() - start)
-
-
-# In[273]:
-
+"""
 
 delta_h_tolerance = 8
 delta_w_tolerance = 7
 
 
-# In[274]:
-
-
 height_idx = get_height_idx(user_info, int(user_id), idx, delta_h_tolerance, delta_w_tolerance)
-#height_idx
-
-
-# In[275]:
-
 
 height_idx_start, height_idx_end = get_height_idx_adjusted(user_info, user_id, height_idx)
-#height_idx_start, height_idx_end
-
-
-# In[278]:
-
 
 start = time.time()
 
@@ -727,152 +687,22 @@ print(n)
 
 print(time.time() - start)
 
-
-# In[236]:
-
-
-start_idx, end_idx
-
-
-# In[220]:
-
-
-adjusted_user_profile_info.loc[user_id]['기장'].loc[:, 'numerator' : 'num']
-#adjusted_user_profile_info.loc[user_id]['어깨'].loc[:, 'numerator' : 'num']
-#adjusted_user_profile_info.loc[user_id]['가슴'].loc[:, 'numerator' : 'num']
-#adjusted_user_profile_info.loc[user_id]['소매'].loc[:, 'numerator' : 'num']
-
-
-# In[221]:
-
-
 #evaluation = evaluate_by_user_profile(user_id, ['100024', '100044', '100066', '100315', '100384', '200055'], adjusted_user_profile_info, clothing_info, size_category)
-
-
-# In[222]:
-
 
 evaluation = evaluate_by_user_profile(user_id, list(clothing_info.index), adjusted_user_profile_info, clothing_info, size_category)
 
-
-# In[223]:
-
-
 evaluation.loc[100016, 'compatibility']
-evaluation
-
-
-# In[224]:
-
 
 evaluation.loc[100016, 'score']
 
-
-# In[225]:
-
-
 best_fit = get_best_fit(evaluation)
-
-
-# In[226]:
-
-
-best_fit
-
-
-# In[263]:
-
-
-
-
-
-# In[264]:
-
-
-log
-
-
-# In[252]:
-
 
 error = get_error(user_size_info, user_id, '100194', clothing_info, size_category)
 
-
-# In[253]:
-
-
 error
-
-
-# In[230]:
-
 
 user_size_info.loc[int(user_id)].loc['기장']
 
-
-# In[192]:
-
-
-#log.sort_values(by = 'distance')
-
-
-# In[193]:
-
-
-#user_info.loc[int(user_id)]
-
-
-# In[194]:
-
-
-#for user in log.loc[:,'user_id']:
-#    print(user_info.loc[user])
-
-
-# In[195]:
-
-
-#recommend = recommed_by_distance(user_size_info, user_id, ['100024', '100044', '100066'], clothing_info, size_category)
-
-
-# In[196]:
-
-
-#recommend = recommend_by_cosine(user_size_info, user_id, ['100024', '100044', '100066'], clothing_info, size_category)
-
-
-# In[160]:
-
-
-#error_value = get_error_and_evaluation(int(user_id), user_size_info.loc[int(user_id)], rating_info, clothing_info, size_category)
-#error_value
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
 
 
 
