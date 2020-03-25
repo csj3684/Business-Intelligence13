@@ -728,6 +728,7 @@ error = get_error(user_size_info, user_id, clothing_list, clothing_info, size_ca
 
 # In[ ]:
 
+# 연습 연습
 
 
 
